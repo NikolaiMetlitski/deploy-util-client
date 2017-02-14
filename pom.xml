@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.nikolai</groupId>
+  <artifactId>deploy-util-client</artifactId>
+  <version>2.3.0-1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <depl.dir>${project.build.directory}/depl</depl.dir>
+    <unpack.dir>${project.build.directory}/unpacked</unpack.dir>
+    <env.conf>${unpack.dir}/conf/environment.properties</env.conf>
+    <customer.conf>${unpack.dir}/conf/config.properties</customer.conf>
+    <client.dir>${project.build.directory}/client</client.dir>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>1.0-alpha-2</version>
+        <executions>
+          <execution>
+            <id>read-environment-props</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>read-project-properties</goal>
+            </goals>
+            <configuration>
+              <files>
+                <file>${env.conf}</file>
+                <file>${customer.conf}</file>
+              </files>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>unpack-deployment</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>unpack</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>com.apioutsourcing.ap-deployment</groupId>
+                  <artifactId>ap-deployment</artifactId>
+                  <version>${project.version}</version>
+                  <classifier>${customer}-local</classifier>
+                  <outputDirectory>${depl.dir}</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>com.apioutsourcing.ap-distribution</groupId>
+                  <artifactId>client</artifactId>
+                  <version>${project.version}</version>
+                  <classifier>${customer}</classifier>
+                  <outputDirectory>${client.dir}</outputDirectory>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>1.8</version>
+        <executions>
+          <execution>
+            <id>explode-distribution</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <unzip dest="${unpack.dir}/conf">
+                  <fileset dir="${depl.dir}">
+                    <include name="*-conf.zip"/>
+                  </fileset>
+                </unzip>
+              </target>
+            </configuration>
+          </execution>
+
+          <execution>
+            <id>create-deployables</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <delete dir="${webserver.document.root}/${web.app.name}"/>
+                <copy todir="${webserver.document.root}/${web.app.name}">
+                  <fileset dir="${client.dir}">
+                    <include name="*.html"/>
+                    <include name="*.json"/>
+                    <include name="css/**/*.*"/>
+                    <include name="fonts/**/*.*"/>
+                    <include name="images/**/*.*"/>
+                    <include name="js_static/**/*.*"/>
+                  </fileset>
+                </copy>
+
+                <delete dir="${deploy.path}/${web.app.name}.war/js"/>
+                <copy todir="${deploy.path}/${web.app.name}.war/js">
+                  <fileset dir="${client.dir}/js">
+                    <include name="**/*"/>
+                  </fileset>
+                </copy>
+
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.apioutsourcing.ap-deployment</groupId>
+      <artifactId>ap-deployment</artifactId>
+      <version>${project.version}</version>
+      <classifier>${customer}-local</classifier>
+    </dependency>
+    <dependency>
+      <groupId>com.apioutsourcing.ap-distribution</groupId>
+      <artifactId>client</artifactId>
+      <version>${project.version}</version>
+      <classifier>${customer}</classifier>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+  </profiles>
+</project>
